@@ -57,7 +57,7 @@ client.once("ready", async () => {
 
 client.on("interactionCreate", async (interaction) => {
 
-  // 📌 سلاش
+  // 🟢 سلاش
   if (interaction.isChatInputCommand()) {
 
     if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
@@ -108,10 +108,8 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  // ⏱️ اختيار المدة
+  // ⏱️ اختيار المدة (🔥 بدون defer)
   if (interaction.isStringSelectMenu() && interaction.customId === "duration") {
-
-    await interaction.deferUpdate(); // 🔥 حل مشكلة الدوران
 
     const data = temp.get(interaction.user.id);
     data.duration = interaction.values[0];
@@ -128,7 +126,7 @@ client.on("interactionCreate", async (interaction) => {
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
 
-    await interaction.showModal(modal);
+    return interaction.showModal(modal); // 🔥 هذا يكفي
   }
 
   // 📝 بعد كتابة السبب
@@ -160,7 +158,7 @@ client.on("interactionCreate", async (interaction) => {
       }, duration.time);
     }
 
-    // 🎨 تحديد اللون (الأقوى)
+    // 🎨 اللون حسب أقوى عقوبة
     let color = ROLES.warn1.color;
     if (data.types.includes("black")) color = ROLES.black.color;
     else if (data.types.includes("warn3")) color = ROLES.warn3.color;
