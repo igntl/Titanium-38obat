@@ -7,7 +7,8 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  EmbedBuilder
+  EmbedBuilder,
+  PermissionsBitField
 } = require('discord.js');
 
 const client = new Client({
@@ -20,14 +21,14 @@ const TOKEN = process.env.TOKEN;
 const LOG_CHANNEL = "1490286354175758366";
 
 const ROLES = {
-  warn1: { id: "1498706230292779080", name: "انذار اول", color: #C34A2C },
-  warn2: { id: "1498706272248266834", name: "انذار ثاني", color: #C34A2C },
-  warn3: { id: "1498706307228631200", name: "انذار ثالث", color: #FF0000 },
-  block: { id: "1498706342649663549", name: "مستبعد من التقسيمة", color: 817679 },
-  black: { id: "1498706382587822191", name: "بلاك ليست كبتنية", color: 342826 }
+  warn1: { id: "1498706230292779080", name: "انذار اول", color: 0x7E2217 },
+  warn2: { id: "1498706272248266834", name: "انذار ثاني", color: 0x7E2217 },
+  warn3: { id: "1498706307228631200", name: "انذار ثالث", color: 0xF62817 },
+  block: { id: "1498706342649663549", name: "مستبعد من التقسيمة", color: 0x736F6E },
+  black: { id: "1498706382587822191", name: "بلاك ليست كبتنية", color: 0x2B1B17 }
 };
 
-// ⏱️ مدد
+// ⏱️ المدد
 const DURATIONS = {
   test: { label: "تجربة", time: 60000 },
   day: { label: "يوم", time: 86400000 },
@@ -39,7 +40,6 @@ const DURATIONS = {
   permanent: { label: "دائم", time: null }
 };
 
-// 🧠 تخزين مؤقت
 const temp = new Map();
 
 client.once("ready", async () => {
@@ -55,11 +55,15 @@ client.once("ready", async () => {
   await client.application.commands.set([cmd]);
 });
 
-// 🎯 التفاعل
 client.on("interactionCreate", async (interaction) => {
 
-  // سلاش
+  // 📌 سلاش
   if (interaction.isChatInputCommand()) {
+
+    if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+      return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
+    }
+
     const user = interaction.options.getUser("الشخص");
 
     temp.set(interaction.user.id, { target: user.id });
@@ -84,8 +88,9 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  // اختيار العقوبات
+  // 📋 اختيار العقوبات
   if (interaction.isStringSelectMenu() && interaction.customId === "types") {
+
     const data = temp.get(interaction.user.id);
     data.types = interaction.values;
 
@@ -103,8 +108,11 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  // اختيار المدة
+  // ⏱️ اختيار المدة
   if (interaction.isStringSelectMenu() && interaction.customId === "duration") {
+
+    await interaction.deferUpdate(); // 🔥 حل مشكلة الدوران
+
     const data = temp.get(interaction.user.id);
     data.duration = interaction.values[0];
 
@@ -120,11 +128,14 @@ client.on("interactionCreate", async (interaction) => {
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
 
-    return interaction.showModal(modal);
+    await interaction.showModal(modal);
   }
 
-  // 📌 بعد كتابة السبب
+  // 📝 بعد كتابة السبب
   if (interaction.isModalSubmit() && interaction.customId === "reasonModal") {
+
+    await interaction.deferReply({ ephemeral: true });
+
     const data = temp.get(interaction.user.id);
     const reason = interaction.fields.getTextInputValue("reason");
 
@@ -136,7 +147,7 @@ client.on("interactionCreate", async (interaction) => {
       if (role) await member.roles.add(role);
     }
 
-    // ⏱️ حذف مؤقت
+    // ⏱️ إزالة مؤقتة
     const duration = DURATIONS[data.duration];
     if (duration.time) {
       setTimeout(async () => {
@@ -149,8 +160,8 @@ client.on("interactionCreate", async (interaction) => {
       }, duration.time);
     }
 
-    // 🎨 تحديد اللون (أقوى عقوبة)
-    let color = 0x5A0F0F;
+    // 🎨 تحديد اللون (الأقوى)
+    let color = ROLES.warn1.color;
     if (data.types.includes("black")) color = ROLES.black.color;
     else if (data.types.includes("warn3")) color = ROLES.warn3.color;
     else if (data.types.includes("block")) color = ROLES.block.color;
@@ -172,9 +183,8 @@ client.on("interactionCreate", async (interaction) => {
     const log = interaction.guild.channels.cache.get(LOG_CHANNEL);
     if (log) log.send({ embeds: [embed] });
 
-    await interaction.reply({
-      content: "✅ تم تنفيذ العقوبة",
-      ephemeral: true
+    await interaction.editReply({
+      content: "✅ تم تنفيذ العقوبة"
     });
 
     temp.delete(interaction.user.id);
