@@ -7,8 +7,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  EmbedBuilder,
-  PermissionsBitField
+  EmbedBuilder
 } = require('discord.js');
 
 const client = new Client({
@@ -18,14 +17,23 @@ const client = new Client({
 const TOKEN = process.env.TOKEN;
 
 // 📌 IDs
-const LOG_CHANNEL = "1490286354175758366";
+const LOG_CHANNEL = "1472987165368516679";
+
+// 🔒 رتب المسموح لهم
+const ALLOWED_ROLES = [
+  "1495462892026200104", // مسؤول السيرفر
+  "1477108715290362096", // مسؤول التقييم
+  "1472012734592712796"  // مسؤول الشكاوي
+];
 
 const ROLES = {
-  warn1: { id: "1498706230292779080", name: "انذار اول", color: 0x7E2217 },
-  warn2: { id: "1498706272248266834", name: "انذار ثاني", color: 0x7E2217 },
-  warn3: { id: "1498706307228631200", name: "انذار ثالث", color: 0xF62817 },
-  block: { id: "1498706342649663549", name: "مستبعد من التقسيمة", color: 0x736F6E },
-  black: { id: "1498706382587822191", name: "بلاك ليست كبتنية", color: 0x2B1B17 }
+  verbal: { id: "1472588209337925897", name: "انذار شفهي" },
+
+  warn1: { id: "1362556773696930004", name: "انذار اول" },
+  warn2: { id: "1362556856580702238", name: "انذار ثاني" },
+  warn3: { id: "1472129523267932182", name: "انذار ثالث" },
+  block: { id: "1364025035022401536", name: "مستبعد من التقسيمة" },
+  black: { id: "1394762550364733440", name: "بلاك ليست كبتنية" }
 };
 
 // ⏱️ المدد
@@ -60,7 +68,10 @@ client.on("interactionCreate", async (interaction) => {
   // 🟢 سلاش
   if (interaction.isChatInputCommand()) {
 
-    if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+    // 🔥 تحقق الرتب بدل Manage Roles
+    const hasRole = interaction.member.roles.cache.some(r => ALLOWED_ROLES.includes(r.id));
+
+    if (!hasRole) {
       return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
     }
 
@@ -72,8 +83,9 @@ client.on("interactionCreate", async (interaction) => {
       .setCustomId("types")
       .setPlaceholder("اختر العقوبات")
       .setMinValues(1)
-      .setMaxValues(5)
+      .setMaxValues(6)
       .addOptions([
+        { label: "انذار شفهي", value: "verbal" }, // 🔥 أول خيار
         { label: "انذار 1", value: "warn1" },
         { label: "انذار 2", value: "warn2" },
         { label: "انذار 3", value: "warn3" },
@@ -108,7 +120,7 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  // ⏱️ اختيار المدة (🔥 بدون defer)
+  // ⏱️ اختيار المدة
   if (interaction.isStringSelectMenu() && interaction.customId === "duration") {
 
     const data = temp.get(interaction.user.id);
@@ -126,10 +138,10 @@ client.on("interactionCreate", async (interaction) => {
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
 
-    return interaction.showModal(modal); // 🔥 هذا يكفي
+    return interaction.showModal(modal);
   }
 
-  // 📝 بعد كتابة السبب
+  // 📝 بعد السبب
   if (interaction.isModalSubmit() && interaction.customId === "reasonModal") {
 
     await interaction.deferReply({ ephemeral: true });
@@ -158,17 +170,11 @@ client.on("interactionCreate", async (interaction) => {
       }, duration.time);
     }
 
-    // 🎨 اللون حسب أقوى عقوبة
-    let color = ROLES.warn1.color;
-    if (data.types.includes("black")) color = ROLES.black.color;
-    else if (data.types.includes("warn3")) color = ROLES.warn3.color;
-    else if (data.types.includes("block")) color = ROLES.block.color;
-
     const punishNames = data.types.map(t => ROLES[t].name).join(" + ");
 
     const embed = new EmbedBuilder()
       .setTitle("🚨 تم إعطاء عقوبات")
-      .setColor(color)
+      .setColor(0xFF4C4C) // 🔥 لون موحد
       .addFields(
         { name: "👤 المستخدم", value: `<@${member.id}>`, inline: true },
         { name: "👮 الإداري", value: `<@${interaction.user.id}>`, inline: true },
